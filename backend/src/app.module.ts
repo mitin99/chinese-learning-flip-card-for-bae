@@ -18,7 +18,7 @@ import { AuthModule } from './auth/auth.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [User, Card],
-      synchronize: process.env.NODE_ENV !== 'production', // Auto-sync schema in dev
+      synchronize: process.env.NODE_ENV !== 'production' || process.env.ENABLE_SYNC === 'true', // Auto-sync schema in dev or if explicitly enabled
       logging: process.env.NODE_ENV === 'development',
     }),
     UsersModule,

@@ -173,17 +173,22 @@ chinese-learning-flip-card-for-bae/
 
 ## Deployment
 
-### Frontend: Vercel
-1. Connect your Git repository
-2. Set build command: `npm run build`
-3. Set output directory: `dist`
-4. Add environment variable: `VITE_API_URL` (your backend URL)
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed step-by-step instructions.
 
-### Backend: Railway
-1. Connect your Git repository
-2. Add PostgreSQL service
-3. Set start command: `npm run start:prod`
-4. Add environment variables from backend `.env`
+### Quick Start
+
+**Frontend (Vercel):**
+- Import GitHub repo, set root directory to `frontend`
+- Add env var: `VITE_API_URL=<your-railway-backend-url>`
+- Auto-deploys on push to main
+
+**Backend (Railway):**
+- Import GitHub repo, set root directory to `backend`
+- Add PostgreSQL service
+- Set env vars: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, `NODE_ENV=production`
+- Auto-deploys on push to main
+
+Both platforms support free tiers perfect for personal projects!
 
 ## License
 
