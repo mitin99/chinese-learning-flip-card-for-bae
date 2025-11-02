@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card } from 'antd';
 import type { Card as CardType } from '../types';
 import './FlipCard.css';
@@ -10,16 +10,25 @@ interface FlipCardProps {
 export default function FlipCard({ card }: FlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const handleFlip = useCallback(() => {
+    setIsFlipped((prev) => !prev);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleFlip();
+      }
+    },
+    [handleFlip],
+  );
+
   return (
     <div
       className="flip-card-container"
-      onClick={() => setIsFlipped(!isFlipped)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          setIsFlipped(!isFlipped);
-        }
-      }}
+      onClick={handleFlip}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label="Flip card to see translation"

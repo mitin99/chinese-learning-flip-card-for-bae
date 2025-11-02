@@ -1,49 +1,105 @@
-import { useState } from 'react';
-import { Layout, Button, Select, Space, message, Card } from 'antd';
+import { useState, useMemo, useCallback } from 'react';
+import { Layout, Button, Select, Space, message, Card, Row, Col, Typography, FloatButton } from 'antd';
 import { LogoutOutlined, PlusOutlined, HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCards } from '../hooks/useCards';
 import FlipCard from '../components/FlipCard';
 import AddCardForm from '../components/AddCardForm';
+import type { Card as CardType } from '../types';
+import './StudyPage.css';
+
+const { Text } = Typography;
 
 const { Header, Content } = Layout;
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 export default function StudyPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [shuffledIndices, setShuffledIndices] = useState<number[]>([]);
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const { data: cards = [], isLoading, error } = useCards(selectedCategory);
 
-  const categories = Array.from(
-    new Set(cards.flatMap((card) => card.categories || []))
-  ).sort();
+  // Memoize categories list
+  const categories = useMemo(() => {
+    return Array.from(new Set(cards.flatMap((card) => card.categories || []))).sort();
+  }, [cards]);
 
-  const currentCard = cards[currentIndex];
+  // Memoize shuffled indices when cards change
+  const activeIndices = useMemo(() => {
+    if (shuffledIndices.length === cards.length) {
+      return shuffledIndices;
+    }
+    return Array.from({ length: cards.length }, (_, i) => i);
+  }, [cards.length, shuffledIndices]);
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % cards.length);
-  };
+  // Memoize current card
+  const currentCard = useMemo(() => {
+    if (cards.length === 0 || activeIndices.length === 0) return null;
+    const actualIndex = activeIndices[currentIndex];
+    return cards[actualIndex] || null;
+  }, [cards, activeIndices, currentIndex]);
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
-  };
+  const handleNext = useCallback(() => {
+    if (activeIndices.length === 0) return;
+    setCurrentIndex((prev) => (prev + 1) % activeIndices.length);
+  }, [activeIndices.length]);
 
-  const handleShuffle = () => {
-    // Shuffle concept - in a real implementation, you'd maintain a shuffled array
-    // For now, just reset to first card
+  const handlePrevious = useCallback(() => {
+    if (activeIndices.length === 0) return;
+    setCurrentIndex((prev) => (prev - 1 + activeIndices.length) % activeIndices.length);
+  }, [activeIndices.length]);
+
+  const handleShuffle = useCallback(() => {
+    if (cards.length === 0) return;
+    const newShuffled = shuffleArray(Array.from({ length: cards.length }, (_, i) => i));
+    setShuffledIndices(newShuffled);
     setCurrentIndex(0);
-    message.info('Cards shuffled!');
-  };
+    message.success('Cards shuffled!');
+  }, [cards.length]);
+
+  const handleCategoryChange = useCallback((category: string | undefined) => {
+    setSelectedCategory(category);
+    setCurrentIndex(0);
+    setShuffledIndices([]); // Reset shuffle when filtering
+  }, []);
+
+  const handleAddCardSuccess = useCallback(() => {
+    setShowAddForm(false);
+    setCurrentIndex(0);
+    setShuffledIndices([]);
+  }, []);
+
+  const handleNavigateHome = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const handleNavigateAdmin = useCallback(() => {
+    navigate('/admin');
+  }, [navigate]);
+
+  const handleShowAddForm = useCallback(() => {
+    setShowAddForm(true);
+  }, []);
 
   if (isLoading) {
     return (
       <Layout style={{ minHeight: '100vh' }}>
-        <Content style={{ padding: '2rem', textAlign: 'center' }}>
-          Đang tải...
+        <Content style={{ padding: '16px', textAlign: 'center' }}>
+          <Text>Đang tải...</Text>
         </Content>
       </Layout>
     );
@@ -52,10 +108,13 @@ export default function StudyPage() {
   if (error) {
     return (
       <Layout style={{ minHeight: '100vh' }}>
-        <Content style={{ padding: '2rem', textAlign: 'center' }}>
+        <Content style={{ padding: '16px' }}>
           <Card>
-            <p>Có lỗi xảy ra khi tải dữ liệu.</p>
-            <Button onClick={() => globalThis.location.reload()}>Tải lại</Button>
+            <Text>Có lỗi xảy ra khi tải dữ liệu.</Text>
+            <br />
+            <Button onClick={() => globalThis.location.reload()} style={{ marginTop: '8px' }}>
+              Tải lại
+            </Button>
           </Card>
         </Content>
       </Layout>
@@ -71,103 +130,117 @@ export default function StudyPage() {
           alignItems: 'center',
           background: '#fff',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          padding: '0 16px',
         }}
       >
-        <Space>
-          <Button
-            icon={<HomeOutlined />}
-            onClick={() => navigate('/')}
-            type="text"
-          >
-            Học Từ Vựng
+        <Space wrap>
+          <Button icon={<HomeOutlined />} onClick={handleNavigateHome} type="text">
+            <span className="ant-btn-text-hidden-sm">Học Từ Vựng</span>
           </Button>
           {isAdmin && (
-            <Button
-              type="primary"
-              onClick={() => navigate('/admin')}
-            >
+            <Button type="primary" onClick={handleNavigateAdmin}>
               Quản trị
             </Button>
           )}
         </Space>
-        <Space>
-          <span>Xin chào, {user?.username}</span>
+        <Space wrap align="center" size="middle">
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              maxWidth: 150,
+              height: '32px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Text ellipsis style={{ margin: 0, lineHeight: '32px' }}>
+              Xin chào, {user?.username}
+            </Text>
+          </span>
           <Button icon={<LogoutOutlined />} onClick={logout}>
-            Đăng xuất
+            <span className="ant-btn-text-hidden-sm">Đăng xuất</span>
           </Button>
         </Space>
       </Header>
-      <Content style={{ padding: '2rem' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <Card style={{ marginBottom: '2rem' }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
-              <div>
-                <label htmlFor="category-select" style={{ marginRight: '1rem' }}>
-                  Lọc theo danh mục:
-                </label>
-                <Select
-                  id="category-select"
-                  style={{ width: 200 }}
-                  placeholder="Tất cả danh mục"
-                  allowClear
-                  value={selectedCategory}
-                  onChange={setSelectedCategory}
-                  options={categories.map((cat) => ({ label: cat, value: cat }))}
-                />
-              </div>
-              <div>
-                <Space>
-                  <Button onClick={handlePrevious} disabled={cards.length === 0}>
-                    Trước
-                  </Button>
-                  <span>
-                    {cards.length > 0 ? `${currentIndex + 1} / ${cards.length}` : '0 / 0'}
-                  </span>
-                  <Button onClick={handleNext} disabled={cards.length === 0}>
-                    Sau
-                  </Button>
-                  <Button onClick={handleShuffle} disabled={cards.length === 0}>
-                    Xáo trộn
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setShowAddForm(true)}
-                  >
-                    Thêm thẻ mới
-                  </Button>
+      <Content style={{ padding: '16px' }}>
+        <Row justify="center">
+          <Col xs={24} sm={24} md={20} lg={16} xl={14}>
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <Card>
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                  <Row gutter={[16, 16]} align="middle">
+                    <Col xs={24} sm={24} md={6}>
+                      <Text strong>Lọc theo danh mục:</Text>
+                    </Col>
+                    <Col xs={24} sm={24} md={18}>
+                      <Select
+                        style={{ width: '100%' }}
+                        placeholder="Tất cả danh mục"
+                        allowClear
+                        value={selectedCategory}
+                        onChange={handleCategoryChange}
+                        options={categories.map((cat) => ({ label: cat, value: cat }))}
+                      />
+                    </Col>
+                  </Row>
+                  <Row gutter={[8, 8]} justify="center" align="middle">
+                    <Col>
+                      <Button onClick={handlePrevious} disabled={cards.length === 0}>
+                        Trước
+                      </Button>
+                    </Col>
+                    <Col>
+                      <Text strong style={{ lineHeight: '32px', display: 'inline-block' }}>
+                        {cards.length > 0 ? `${currentIndex + 1} / ${cards.length}` : '0 / 0'}
+                      </Text>
+                    </Col>
+                    <Col>
+                      <Button onClick={handleNext} disabled={cards.length === 0}>
+                        Sau
+                      </Button>
+                    </Col>
+                    <Col>
+                      <Button onClick={handleShuffle} disabled={cards.length === 0}>
+                        Xáo trộn
+                      </Button>
+                    </Col>
+                  </Row>
                 </Space>
-              </div>
-            </Space>
-          </Card>
+              </Card>
 
-          {(() => {
-            if (cards.length === 0) {
-              return (
+              {cards.length === 0 ? (
                 <Card>
-                  <p style={{ textAlign: 'center', fontSize: '1.2rem' }}>
+                  <Text style={{ textAlign: 'center', display: 'block', fontSize: '16px' }}>
                     {selectedCategory
                       ? 'Không có thẻ nào trong danh mục này.'
                       : 'Chưa có thẻ nào. Hãy thêm thẻ mới!'}
-                  </p>
+                  </Text>
                 </Card>
-              );
-            }
-            return currentCard ? <FlipCard card={currentCard} /> : null;
-          })()}
+              ) : currentCard ? (
+                <FlipCard card={currentCard} />
+              ) : null}
+            </Space>
+          </Col>
+        </Row>
 
-          {showAddForm && (
-            <AddCardForm
-              onClose={() => setShowAddForm(false)}
-              onSuccess={() => {
-                setShowAddForm(false);
-                setCurrentIndex(0);
-              }}
-            />
-          )}
-        </div>
+        {showAddForm && (
+          <AddCardForm
+            onClose={() => setShowAddForm(false)}
+            onSuccess={handleAddCardSuccess}
+          />
+        )}
+
+        <FloatButton
+          icon={<PlusOutlined />}
+          type="primary"
+          tooltip="Thêm thẻ mới"
+          onClick={handleShowAddForm}
+          shape="circle"
+          style={{ width: 64, height: 64 }}
+        />
       </Content>
     </Layout>
   );
 }
-

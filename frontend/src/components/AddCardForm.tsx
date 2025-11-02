@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Form, Input, Button, Modal, Space, message } from 'antd';
 import { useCreateCard } from '../hooks/useCards';
 import type { CreateCardDto } from '../types';
@@ -11,36 +12,40 @@ export default function AddCardForm({ onClose, onSuccess }: AddCardFormProps) {
   const [form] = Form.useForm();
   const createCard = useCreateCard();
 
-  const handleSubmit = async (values: any) => {
-    try {
-      const categories = values.categories
-        ? values.categories.split(',').map((c: string) => c.trim()).filter(Boolean)
-        : [];
-      
-      const cardData: CreateCardDto = {
-        chinese: values.chinese,
-        pinyin: values.pinyin || undefined,
-        vietnamese: values.vietnamese,
-        categories,
-      };
+  const handleSubmit = useCallback(
+    async (values: any) => {
+      try {
+        const categories = values.categories
+          ? values.categories.split(',').map((c: string) => c.trim()).filter(Boolean)
+          : [];
 
-      await createCard.mutateAsync(cardData);
-      message.success('Thêm thẻ thành công!');
-      form.resetFields();
-      onSuccess?.();
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Thêm thẻ thất bại');
-    }
-  };
+        const cardData: CreateCardDto = {
+          chinese: values.chinese,
+          pinyin: values.pinyin || undefined,
+          vietnamese: values.vietnamese,
+          categories,
+        };
+
+        await createCard.mutateAsync(cardData);
+        message.success('Thêm thẻ thành công!');
+        form.resetFields();
+        onSuccess?.();
+      } catch (error: any) {
+        message.error(error?.response?.data?.message || 'Thêm thẻ thất bại');
+      }
+    },
+    [createCard, form, onSuccess],
+  );
 
   return (
-    <Modal
-      title="Thêm thẻ mới"
-      open={true}
-      onCancel={onClose}
-      footer={null}
-      width={600}
-    >
+      <Modal
+        title="Thêm thẻ mới"
+        open={true}
+        onCancel={onClose}
+        footer={null}
+        width={600}
+        style={{ maxWidth: '95vw' }}
+      >
       <Form
         form={form}
         onFinish={handleSubmit}

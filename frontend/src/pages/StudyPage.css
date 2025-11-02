@@ -1,0 +1,10 @@
+/* Minimal CSS - Only for responsive text hiding */
+.ant-btn-text-hidden-sm {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .ant-btn-text-hidden-sm {
+    display: none;
+  }
+}
