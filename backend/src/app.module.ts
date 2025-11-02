@@ -8,6 +8,7 @@ import { Card } from './cards/card.entity';
 import { UsersModule } from './users/users.module';
 import { CardsModule } from './cards/cards.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -18,12 +19,15 @@ import { AuthModule } from './auth/auth.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [User, Card],
-      synchronize: process.env.NODE_ENV !== 'production' || process.env.ENABLE_SYNC === 'true', // Auto-sync schema in dev or if explicitly enabled
+      synchronize:
+        process.env.NODE_ENV !== 'production' ||
+        process.env.ENABLE_SYNC === 'true', // Auto-sync schema in dev or if explicitly enabled
       logging: process.env.NODE_ENV === 'development',
     }),
     UsersModule,
     CardsModule,
     AuthModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
